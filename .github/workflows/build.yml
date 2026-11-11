@@ -28,7 +28,8 @@ jobs:
       - name: Apply Kali NetHunter Patches
         working-directory: kernel
         run: |
-          git clone --depth=1 https://github.com nh-patches
+                    GH="https://github.com"
+          git clone --depth=1 $GH/wumingzhinu/kali-nethunter-kernel-patches.git nh-patches
           if [ -f nh-patches/5.4/add-wifi-injection-5.4.patch ]; then
             patch -p1 < nh-patches/5.4/add-wifi-injection-5.4.patch || true
           fi
