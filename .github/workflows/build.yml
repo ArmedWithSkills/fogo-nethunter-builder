@@ -18,11 +18,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex git \
             libelf-dev libncurses5-dev libssl-dev python3 python-is-python3 zip unzip wget
-
+     
+      
       - name: Clone LineageOS 24.0 Kernel & Clang Toolchain
         run: |
-          git clone --depth=1 -b lineage-24.0 https://github.com kernel
-          git clone --depth=1 -b lineage-24.0 https://github.com clang
+          GH="https://github.com"
+          git clone --depth=1 -b lineage-24.0 $GH/LineageOS/android_kernel_motorola_sm6375.git kernel
+          git clone --depth=1 -b lineage-24.0 $GH/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b.git clang
+          
 
       - name: Apply Kali NetHunter Patches
         working-directory: kernel
