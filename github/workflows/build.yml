@@ -1,0 +1,100 @@
+name: Build Fogo NetHunter Kernel (LineageOS 24.0)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Maximize Build Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android
+          df -h
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex git \
+            libelf-dev libncurses5-dev libssl-dev python3 python-is-python3 zip unzip wget
+
+      - name: Clone LineageOS 24.0 Kernel & Clang Toolchain
+        run: |
+          git clone --depth=1 -b lineage-24.0 https://github.com kernel
+          git clone --depth=1 -b lineage-24.0 https://github.com clang
+
+      - name: Apply Kali NetHunter Patches
+        working-directory: kernel
+        run: |
+          git clone --depth=1 https://github.com nh-patches
+          if [ -f nh-patches/5.4/add-wifi-injection-5.4.patch ]; then
+            patch -p1 < nh-patches/5.4/add-wifi-injection-5.4.patch || true
+          fi
+          rm -rf nh-patches
+
+      - name: Configure Kernel with NetHunter Options
+        working-directory: kernel
+        run: |
+          export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+            vendor/holi-qgki_defconfig \
+            vendor/ext_config/lineage_moto-holi.config
+
+          cat << 'EOF' >> out/.config
+          CONFIG_SYSVIPC=y
+          CONFIG_MODULES=y
+          CONFIG_MODULE_UNLOAD=y
+          CONFIG_CFG80211=y
+          CONFIG_MAC80211=y
+          CONFIG_MAC80211_MESH=y
+          CONFIG_CFG80211_WEXT=y
+          CONFIG_ATH9K_HTC=y
+          CONFIG_RT2X00=y
+          CONFIG_RT2800USB=y
+          CONFIG_MT7601U=y
+          CONFIG_MT76x0U=y
+          CONFIG_MT76x2U=y
+          CONFIG_RTL8187=y
+          CONFIG_USB_CONFIGFS=y
+          CONFIG_USB_CONFIGFS_F_HID=y
+          CONFIG_USB_CONFIGFS_RNDIS=y
+          CONFIG_USB_CONFIGFS_ECM=y
+          CONFIG_USB_CONFIGFS_MASS_STORAGE=y
+          CONFIG_BT_RFCOMM=y
+          CONFIG_BT_RFCOMM_TTY=y
+          CONFIG_BT_HCIBTUSB=y
+          CONFIG_BT_HCIUART=y
+          CONFIG_MEDIA_SUPPORT=y
+          CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
+          CONFIG_DVB_USB_RTL28XXU=y
+          EOF
+
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+
+      - name: Compile Kernel Image & Modules
+        working-directory: kernel
+        run: |
+          export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
+          make -j$(nproc) O=out \
+            ARCH=arm64 \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+
+      - name: Package Output Artifacts
+        run: |
+          mkdir -p release/modules
+          cp kernel/out/arch/arm64/boot/Image release/
+          if [ -f kernel/out/arch/arm64/boot/dtbo.img ]; then
+            cp kernel/out/arch/arm64/boot/dtbo.img release/
+          fi
+          find kernel/out -name "*.ko" -exec cp {} release/modules/ \;
+          cd release && zip -r ../fogo-nethunter-kernel.zip .
+
+      - name: Upload Compiled Kernel Zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: fogo-nethunter-kernel
+          path: fogo-nethunter-kernel.zip
