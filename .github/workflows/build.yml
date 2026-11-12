@@ -1,4 +1,4 @@
-name: Build Fogo NetHunter Kernel (LineageOS 24.0)
+name: Build Fogo NetHunter Kernel (5.4.302-moto-gaba9e36d0f9f)
 
 on:
   workflow_dispatch:
@@ -18,60 +18,58 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex git \
             libelf-dev libncurses5-dev libssl-dev python3 python-is-python3 zip unzip wget
-     
-      - name: Clone LineageOS 24.0 Kernel & Clang Toolchain
+
+      - name: Clone Exact Kernel Commit & Clang Toolchain
         run: |
           GH="https://github.com"
-          git clone --depth=1 -b lineage-24.0 $GH/LineageOS/android_kernel_motorola_sm6375.git kernel
+          git clone -b lineage-24.0 $GH/LineageOS/android_kernel_motorola_sm6375.git kernel
+          cd kernel && git checkout aba9e36d0f9f && cd ..
           git clone --depth=1 $GH/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b.git clang
-          
-      - name: Apply Kali NetHunter Patches
+
+      - name: Apply Kali NetHunter Wi-Fi Injection Patch
         working-directory: kernel
-        run: |     
+        run: |
           GH="https://github.com"
           git clone --depth=1 $GH/wumingzhinu/kali-nethunter-kernel-patches.git nh-patches
           if [ -f nh-patches/5.4/add-wifi-injection-5.4.patch ]; then
             patch -p1 < nh-patches/5.4/add-wifi-injection-5.4.patch || true
           fi
           rm -rf nh-patches
-          
-      - name: Configure Kernel with NetHunter Options
+
+      - name: Configure Kernel (GKI-Safe Modules =m)
         working-directory: kernel
         run: |
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
             vendor/holi-qgki_defconfig \
             vendor/ext_config/lineage_moto-holi.config
-            
+
           cat << 'EOF' >> out/.config
+          CONFIG_LOCALVERSION="-moto-gaba9e36d0f9f"
+          CONFIG_LOCALVERSION_AUTO=n
           CONFIG_SYSVIPC=y
           CONFIG_MODULES=y
           CONFIG_MODULE_UNLOAD=y
-          CONFIG_CFG80211=y
-          CONFIG_MAC80211=y
+          CONFIG_CFG80211=m
+          CONFIG_MAC80211=m
           CONFIG_MAC80211_MESH=y
           CONFIG_CFG80211_WEXT=y
-          CONFIG_ATH9K_HTC=y
-          CONFIG_RT2X00=y
-          CONFIG_RT2800USB=y
-          CONFIG_MT7601U=y
-          CONFIG_MT76x0U=y
-          CONFIG_MT76x2U=y
-          CONFIG_RTL8187=y
-          CONFIG_USB_CONFIGFS=y
-          CONFIG_USB_CONFIGFS_F_HID=y
-          CONFIG_USB_CONFIGFS_RNDIS=y
-          CONFIG_USB_CONFIGFS_ECM=y
-          CONFIG_USB_CONFIGFS_MASS_STORAGE=y
+          CONFIG_ATH9K_HTC=m
+          CONFIG_RT2X00=m
+          CONFIG_RT2800USB=m
+          CONFIG_MT7601U=m
+          CONFIG_MT76x0U=m
+          CONFIG_MT76x2U=m
+          CONFIG_RTL8187=m
           CONFIG_BT_RFCOMM=y
           CONFIG_BT_RFCOMM_TTY=y
-          CONFIG_BT_HCIBTUSB=y
+          CONFIG_BT_HCIBTUSB=m
           CONFIG_BT_HCIUART=y
           EOF
- 
-          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig 
 
-      - name: Compile Kernel Image & Modules
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+
+      - name: Compile Kernel Image & Loadable Modules
         working-directory: kernel
         run: |
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
@@ -83,42 +81,15 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
-      - name: Package Flashable AnyKernel3 Zip
+      - name: Package Image and NetHunter .ko Modules
         run: |
-          GH="https://github.com"
-          git clone --depth=1 $GH/osm0sis/AnyKernel3.git anykernel
-          rm -rf anykernel/.git anykernel/README.md
-          cp kernel/out/arch/arm64/boot/Image anykernel/
+          mkdir -p release/nethunter_modules
+          cp kernel/out/arch/arm64/boot/Image release/
+          find kernel/out -name "*.ko" -exec cp {} release/nethunter_modules/ \;
+          cd release && zip -r9 ../fogo-5.4.302-nh-bundle.zip .
 
-          cat << 'EOF' > anykernel/anykernel.sh
-          ### AnyKernel3 Ramdisk Mod Script
-          properties() { '
-          kernel.string=NetHunter Kernel for Moto G 5G 2024 (fogo)
-          do.devicecheck=1
-          do.modules=0
-          do.systemless=1
-          do.cleanup=1
-          do.cleanuponabort=0
-          device.name1=fogo
-          supported.versions=14 - 16
-          supported.patchlevels=
-          '; }
-
-          block=boot;
-          is_slot_device=1;
-          ramdisk_compression=auto;
-          patch_vbmeta_flag=auto;
-
-          . tools/ak3-core.sh;
-          dump_boot;
-          write_boot;
-          EOF
-
-          cd anykernel && zip -r9 ../fogo-nethunter-AnyKernel3.zip * -x .git README.md *placeholder
-
-      - name: Upload Compiled Kernel Zip
-        uses: actions/upload-artifact@v4
+      - name: Upload Compiled Kernel & Modules
+        uses: actions/upload-artifact@v5
         with:
-          name: fogo-nethunter-kernel
-          path: fogo-nethunter-AnyKernel3.zip
-
+          name: fogo-5.4.302-nh-bundle
+          path: fogo-5.4.302-nh-bundle.zip
