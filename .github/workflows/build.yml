@@ -67,12 +67,9 @@ jobs:
           CONFIG_BT_RFCOMM_TTY=y
           CONFIG_BT_HCIBTUSB=y
           CONFIG_BT_HCIUART=y
-          CONFIG_MEDIA_SUPPORT=y
-          CONFIG_MEDIA_DIGITAL_TV_SUPPORT=y
-          CONFIG_DVB_USB_RTL28XXU=y
           EOF
-
-          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+ 
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig 
 
       - name: Compile Kernel Image & Modules
         working-directory: kernel
@@ -82,18 +79,41 @@ jobs:
             ARCH=arm64 \
             LLVM=1 \
             LLVM_IAS=1 \
+            KCFLAGS="-Wno-error" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
-      - name: Package Output Artifacts
+      - name: Package Flashable AnyKernel3 Zip
         run: |
-          mkdir -p release/modules
-          cp kernel/out/arch/arm64/boot/Image release/
-          if [ -f kernel/out/arch/arm64/boot/dtbo.img ]; then
-            cp kernel/out/arch/arm64/boot/dtbo.img release/
-          fi
-          find kernel/out -name "*.ko" -exec cp {} release/modules/ \;
-          cd release && zip -r ../fogo-nethunter-kernel.zip .
+          git clone --depth=1 https://github.com anykernel
+          rm -rf anykernel/.git anykernel/README.md
+          cp kernel/out/arch/arm64/boot/Image anykernel/
+
+          cat << 'EOF' > anykernel/anykernel.sh
+          ### AnyKernel3 Ramdisk Mod Script
+          properties() { '
+          kernel.string=NetHunter Kernel for Moto G 5G 2024 (fogo)
+          do.devicecheck=1
+          do.modules=0
+          do.systemless=1
+          do.cleanup=1
+          do.cleanuponabort=0
+          device.name1=fogo
+          supported.versions=14 - 16
+          supported.patchlevels=
+          '; }
+
+          block=boot;
+          is_slot_device=1;
+          ramdisk_compression=auto;
+          patch_vbmeta_flag=auto;
+
+          . tools/ak3-core.sh;
+          dump_boot;
+          write_boot;
+          EOF
+
+          cd anykernel && zip -r9 ../fogo-nethunter-AnyKernel3.zip * -x .git README.md *placeholder
 
       - name: Upload Compiled Kernel Zip
         uses: actions/upload-artifact@v4
