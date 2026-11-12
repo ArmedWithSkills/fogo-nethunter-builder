@@ -1,10 +1,10 @@
-name: Build Fogo NetHunter Wi-Fi Modules (5.4.302-moto-gc63a2b5a1b97)
+name: Build Fogo NetHunter Magisk Module (5.4.302-moto-gc63a2b5a1b97)
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-modules:
+  build-magisk-module:
     runs-on: ubuntu-22.04
 
     steps:
@@ -81,20 +81,48 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
-      - name: Strip & Package Only Adapter .ko Modules
+      - name: Package as Flashable Magisk Module Zip
         run: |
-          mkdir -p release
-          find kernel/out/drivers/net/wireless -name "*.ko" -exec cp {} release/ \;
-          find kernel/out/drivers/bluetooth -name "*.ko" -exec cp {} release/ \;
-          cp kernel/out/drivers/misc/eeprom/eeprom_93cx6.ko release/ 2>/dev/null || true
-          cp kernel/out/net/mac80211/mac80211.ko release/ 2>/dev/null || true
-          cp kernel/out/net/wireless/cfg80211.ko release/ 2>/dev/null || true
-          $GITHUB_WORKSPACE/clang/bin/llvm-strip --strip-debug release/*.ko
-          ls -lh release/
-          cd release && zip -r9 ../fogo-c63a2b5a1b97-wifi-modules.zip .
+          mkdir -p magisk_mod/META-INF/com/google/android
+          mkdir -p magisk_mod/modules
 
-      - name: Upload Compact Wi-Fi Modules Zip
+          find kernel/out/drivers/net/wireless -name "*.ko" -exec cp {} magisk_mod/modules/ \;
+          find kernel/out/drivers/bluetooth -name "*.ko" -exec cp {} magisk_mod/modules/ \;
+          cp kernel/out/drivers/misc/eeprom/eeprom_93cx6.ko magisk_mod/modules/ 2>/dev/null || true
+          cp kernel/out/net/mac80211/mac80211.ko magisk_mod/modules/ 2>/dev/null || true
+          cp kernel/out/net/wireless/cfg80211.ko magisk_mod/modules/ 2>/dev/null || true
+          $GITHUB_WORKSPACE/clang/bin/llvm-strip --strip-debug magisk_mod/modules/*.ko
+
+          cat << 'EOF' > magisk_mod/module.prop
+          id=fogo_nh_wifi
+          name=Fogo NetHunter Wi-Fi & BT Drivers (5.4.302)
+          version=v1.0
+          versionCode=1
+          author=ArmedWithSkills
+          description=Atheros ath9k_htc, Realtek rtl8187, Ralink rt2800usb, MediaTek mt76, and btusb modules for Moto G 5G (fogo) 5.4.302-moto-gc63a2b5a1b97
+          EOF
+
+          cat << 'EOF' > magisk_mod/service.sh
+          #!/system/bin/sh
+          MODDIR=${0%/*}
+          sleep 10
+          for mod in cfg80211 mac80211 eeprom_93cx6 ath ath9k_hw ath9k_common ath9k_htc rtl8187 rt2x00lib rt2x00usb rt2800lib rt2800usb mt76 mt76-usb mt76x02-lib mt76x02-usb mt7601u mt76x0u mt76x2u btintel btrtl btusb; do
+            if [ -f "$MODDIR/modules/${mod}.ko" ]; then
+              insmod "$MODDIR/modules/${mod}.ko" 2>/dev/null
+            fi
+          done
+          EOF
+          chmod 755 magisk_mod/service.sh
+
+          GH="https://github.com"
+          curl -sL $GH/topjohnwu/Magisk/raw/master/scripts/module_installer.sh -o magisk_mod/META-INF/com/google/android/update-binary
+          echo "#MAGISK" > magisk_mod/META-INF/com/google/android/updater-script
+
+          ls -lh magisk_mod/modules/
+          cd magisk_mod && zip -r9 ../fogo-nh-wifi-magisk-module.zip .
+
+      - name: Upload Flashable Magisk Module Zip
         uses: actions/upload-artifact@v5
         with:
-          name: fogo-c63a2b5a1b97-wifi-modules
-          path: fogo-c63a2b5a1b97-wifi-modules.zip
+          name: fogo-nh-wifi-magisk-module
+          path: fogo-nh-wifi-magisk-module.zip
