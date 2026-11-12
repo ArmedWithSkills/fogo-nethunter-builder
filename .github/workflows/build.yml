@@ -85,7 +85,8 @@ jobs:
 
       - name: Package Flashable AnyKernel3 Zip
         run: |
-          git clone --depth=1 https://github.com anykernel
+          GH="https://github.com"
+          git clone --depth=1 $GH/osm0sis/AnyKernel3.git anykernel
           rm -rf anykernel/.git anykernel/README.md
           cp kernel/out/arch/arm64/boot/Image anykernel/
 
@@ -119,4 +120,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fogo-nethunter-kernel
-          path: fogo-nethunter-kernel.zip
+          path: fogo-nethunter-AnyKernel3.zip
+
