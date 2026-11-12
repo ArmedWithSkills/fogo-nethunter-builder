@@ -34,8 +34,6 @@ jobs:
             patch -p1 < nh-patches/5.4/add-wifi-injection-5.4.patch || true
           fi
           rm -rf nh-patches
-
-          
           
       - name: Configure Kernel with NetHunter Options
         working-directory: kernel
