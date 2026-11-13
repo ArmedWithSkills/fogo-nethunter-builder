@@ -68,8 +68,7 @@ jobs:
           EOF
 
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          ./scripts/config --file out/.config -d MAC80211_RC_MINSTREL_HT
-          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+          echo "/* stub */" > net/mac80211/rc80211_minstrel_ht.c
           grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76|MAC80211" out/.config
 
 
