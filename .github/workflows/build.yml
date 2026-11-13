@@ -45,8 +45,7 @@ jobs:
           CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
           CONFIG_LOCALVERSION_AUTO=n
           EOF
-          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" net/wireless/
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" modules
           cp out/Module.symvers /tmp/stock_Module.symvers
           grep -E "wiphy_apply_custom_regulatory|ieee80211_get_channel_khz" /tmp/stock_Module.symvers
 
