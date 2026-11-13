@@ -40,15 +40,15 @@ jobs:
         working-directory: kernel
         run: |
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
-          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 \
-            vendor/holi-qgki_defconfig \
-            vendor/ext_config/lineage_moto-holi.config
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 \          
+          vendor/holi-qgki_defconfig \
+          vendor/ext_config/lineage_moto-holi.config
 
           cat << 'EOF' >> out/.config
           CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
           CONFIG_LOCALVERSION_AUTO=n
           CONFIG_LTO_NONE=y
-          CONFIG_MAC80211=m
+          CONFIG_MAiC80211=m
           CONFIG_MAC80211_MESH=y
           CONFIG_WLAN=y
           CONFIG_WLAN_VENDOR_ATH=y
@@ -71,6 +71,7 @@ jobs:
 
 
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+          sed -i 's/rc80211_minstrel_ht.o//g' net/mac80211/Makefile
           grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76" out/.config
 
       - name: Compile Kernel & Adapter Modules
