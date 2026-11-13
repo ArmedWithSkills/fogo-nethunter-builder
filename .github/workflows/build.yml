@@ -85,10 +85,7 @@ jobs:
           cp /tmp/stock_Module.symvers out/Module.symvers
           cat out/net/mac80211/Module.symvers >> out/Module.symvers
 
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -I$PWD/net/mac80211" KBUILD_MODPOST_WARN=1 M=net/mac80211 modules
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/net/wireless modules
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/bluetooth modules
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/misc/eeprom modules
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -I$PWD/net/mac80211" KBUILD_MODPOST_WARN=1 modules
 
       - name: Package as Flashable Magisk Module Zip
         run: |
