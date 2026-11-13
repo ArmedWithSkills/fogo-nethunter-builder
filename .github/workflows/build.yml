@@ -68,8 +68,10 @@ jobs:
           EOF
 
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          echo "/* empty */" > net/mac80211/rc80211_minstrel_ht.c
+          cp net/mac80211/rc80211_minstrel.c net/mac80211/rc80211_minstrel_ht.c
+          sed -i 's/rc80211_minstrel\.o//g' net/mac80211/Makefile
           grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76|MAC80211" out/.config
+
 
       - name: Compile Kernel & Adapter Modules
         working-directory: kernel
