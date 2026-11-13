@@ -67,10 +67,11 @@ jobs:
           CONFIG_BT_HCIBTUSB=m
           EOF
 
-
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          sed -i 's/rc80211_minstrel_ht.o//g' net/mac80211/Makefile
-          grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76" out/.config
+          ./scripts/config --file out/.config -d MAC80211_RC_MINSTREL_HT
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+          grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76|MAC80211" out/.config
+
 
       - name: Compile Kernel & Adapter Modules
         working-directory: kernel
