@@ -1,4 +1,4 @@
-name: Build Fogo NetHunter Magisk Module (Exact Stock CRCs)
+name: Build Fogo NetHunter Magisk Module (Single-Pass Full Build)
 
 on:
   workflow_dispatch:
@@ -36,25 +36,15 @@ jobs:
           fi
           rm -rf nh-patches
 
-      - name: Stage 1 - Capture Exact Stock cfg80211 Symbol CRCs
+      - name: Configure Wireless & Bluetooth Drivers
         working-directory: kernel
         run: |
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 vendor/holi-qgki_defconfig vendor/ext_config/lineage_moto-holi.config
+
           cat << 'EOF' >> out/.config
           CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
           CONFIG_LOCALVERSION_AUTO=n
-          EOF
-          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error"
-          cp out/Module.symvers /tmp/stock_Module.symvers
-          grep -E "module_layout|wiphy_apply_custom_regulatory|ieee80211_get_channel_khz" /tmp/stock_Module.symvers
-
-      - name: Stage 2 - Configure & Build mac80211 + Adapter Modules
-        working-directory: kernel
-        run: |
-          export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
-          cat << 'EOF' >> out/.config
           CONFIG_MAC80211=m
           CONFIG_MAC80211_MESH=y
           CONFIG_WLAN=y
@@ -80,16 +70,21 @@ jobs:
           ./scripts/config --file out/.config -d CFG80211_WEXT
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
 
-          sed -i '1i ccflags-y += -I$(srctree)/$(src)' net/mac80211/Makefile
           : > net/mac80211/rc80211_minstrel_ht.c
           printf '\nint __init rc80211_minstrel_init(void) { return 0; }\nvoid rc80211_minstrel_exit(void) {}\n' >> net/mac80211/main.c
+          grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76|MAC80211|BT_HCIBTUSB|WEXT" out/.config
 
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" modules_prepare
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" M=net/mac80211 modules
-          cp /tmp/stock_Module.symvers out/Module.symvers
-          cat out/net/mac80211/Module.symvers >> out/Module.symvers
-
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 modules
+      - name: Compile Full Kernel & Modules (Exact ThinLTO + Symvers)
+        working-directory: kernel
+        run: |
+          export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
+          make -j$(nproc) O=out \
+            ARCH=arm64 \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            KCFLAGS="-Wno-error" \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
       - name: Package as Flashable Magisk Module Zip
         run: |
@@ -97,9 +92,7 @@ jobs:
           mkdir -p magisk_mod/modules
 
           find kernel/out/drivers/net/wireless -name "*.ko" -exec cp {} magisk_mod/modules/ \;
-          cp kernel/out/drivers/bluetooth/btusb.ko magisk_mod/modules/ 2>/dev/null || true
-          cp kernel/out/drivers/bluetooth/btintel.ko magisk_mod/modules/ 2>/dev/null || true
-          cp kernel/out/drivers/bluetooth/btrtl.ko magisk_mod/modules/ 2>/dev/null || true
+          find kernel/out/drivers/bluetooth -name "*.ko" -exec cp {} magisk_mod/modules/ \;
           cp kernel/out/drivers/misc/eeprom/eeprom_93cx6.ko magisk_mod/modules/ 2>/dev/null || true
           cp kernel/out/net/mac80211/mac80211.ko magisk_mod/modules/ 2>/dev/null || true
           $GITHUB_WORKSPACE/clang/bin/llvm-strip --strip-debug magisk_mod/modules/*.ko
@@ -116,7 +109,7 @@ jobs:
           cat << 'EOF' > magisk_mod/service.sh
           #!/system/bin/sh
           MODDIR=${0%/*}
-          sleep 25
+          sleep 30
           for mod in mac80211 eeprom_93cx6 ath ath9k_hw ath9k_common ath9k_htc rtl8187 rt2x00lib rt2x00usb rt2800lib rt2800usb mt76 mt76-usb mt76x02-lib mt76x02-usb mt7601u mt76x0u mt76x2u btintel btrtl btusb; do
             if [ -f "$MODDIR/modules/${mod}.ko" ]; then
               insmod "$MODDIR/modules/${mod}.ko" 2>/dev/null
