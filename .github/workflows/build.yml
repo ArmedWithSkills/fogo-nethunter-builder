@@ -46,9 +46,9 @@ jobs:
           CONFIG_LOCALVERSION_AUTO=n
           EOF
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" modules
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error"
           cp out/Module.symvers /tmp/stock_Module.symvers
-          grep -E "wiphy_apply_custom_regulatory|ieee80211_get_channel_khz" /tmp/stock_Module.symvers
+          grep -E "module_layout|wiphy_apply_custom_regulatory|ieee80211_get_channel_khz" /tmp/stock_Module.symvers
 
       - name: Stage 2 - Configure & Build mac80211 + Adapter Modules
         working-directory: kernel
