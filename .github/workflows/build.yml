@@ -80,7 +80,7 @@ jobs:
           ./scripts/config --file out/.config -d CFG80211_WEXT
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
 
-          sed -i '1i ccflags-y += -I$(src)' net/mac80211/Makefile
+          sed -i '1i ccflags-y += -I$(srctree)/$(src)' net/mac80211/Makefile
           : > net/mac80211/rc80211_minstrel_ht.c
           printf '\nint __init rc80211_minstrel_init(void) { return 0; }\nvoid rc80211_minstrel_exit(void) {}\n' >> net/mac80211/main.c
 
