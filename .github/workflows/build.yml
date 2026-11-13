@@ -68,8 +68,8 @@ jobs:
           EOF
 
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          cp net/mac80211/rc80211_minstrel.c net/mac80211/rc80211_minstrel_ht.c
-          sed -i 's/rc80211_minstrel\.o//g' net/mac80211/Makefile
+          : > net/mac80211/rc80211_minstrel_ht.c
+          printf '\nint __init rc80211_minstrel_init(void) { return 0; }\nvoid rc80211_minstrel_exit(void) {}\n' >> net/mac80211/main.c
           grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76|MAC80211" out/.config
 
 
