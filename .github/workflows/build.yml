@@ -68,10 +68,12 @@ jobs:
           EOF
 
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
-          sed -i '1i #ifndef MINSTREL_HT_GUARD\n#define MINSTREL_HT_GUARD' net/mac80211/rc80211_minstrel_ht.c
-          echo '#endif' >> net/mac80211/rc80211_minstrel_ht.c
+          cat << 'EOF' > net/mac80211/rc80211_minstrel_ht.c
+          #include "rate.h"
+          int __init rc80211_minstrel_init(void) { return 0; }
+          void rc80211_minstrel_exit(void) {}
+          EOF
           grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76|MAC80211" out/.config
-
 
       - name: Compile Kernel & Adapter Modules
         working-directory: kernel
