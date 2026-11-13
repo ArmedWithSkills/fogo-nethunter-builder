@@ -81,13 +81,11 @@ jobs:
           : > net/mac80211/rc80211_minstrel_ht.c
           printf '\nint __init rc80211_minstrel_init(void) { return 0; }\nvoid rc80211_minstrel_exit(void) {}\n' >> net/mac80211/main.c
 
-                    make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -I$PWD/net/mac80211" M=net/mac80211 modules
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -I$PWD/net/mac80211" M=net/mac80211 modules
           cp /tmp/stock_Module.symvers out/Module.symvers
           cat out/net/mac80211/Module.symvers >> out/Module.symvers
 
           make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -I$PWD/net/mac80211" KBUILD_MODPOST_WARN=1 M=net/mac80211 modules
-
-          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -Inet/mac80211" KBUILD_MODPOST_WARN=1 M=net/mac80211 modules
           make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/net/wireless modules
           make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/bluetooth modules
           make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/misc/eeprom modules
