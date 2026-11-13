@@ -45,6 +45,7 @@ jobs:
           CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
           CONFIG_LOCALVERSION_AUTO=n
           EOF
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
           make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" modules
           cp out/Module.symvers /tmp/stock_Module.symvers
           grep -E "wiphy_apply_custom_regulatory|ieee80211_get_channel_khz" /tmp/stock_Module.symvers
@@ -78,9 +79,11 @@ jobs:
           sed -i '/select CFG80211_WEXT/d' net/mac80211/Kconfig
           ./scripts/config --file out/.config -d CFG80211_WEXT
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+
           : > net/mac80211/rc80211_minstrel_ht.c
           printf '\nint __init rc80211_minstrel_init(void) { return 0; }\nvoid rc80211_minstrel_exit(void) {}\n' >> net/mac80211/main.c
 
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" modules_prepare
           make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -I$PWD/net/mac80211" M=net/mac80211 modules
           cp /tmp/stock_Module.symvers out/Module.symvers
           cat out/net/mac80211/Module.symvers >> out/Module.symvers
@@ -93,7 +96,9 @@ jobs:
           mkdir -p magisk_mod/modules
 
           find kernel/out/drivers/net/wireless -name "*.ko" -exec cp {} magisk_mod/modules/ \;
-          find kernel/out/drivers/bluetooth -name "*.ko" -exec cp {} magisk_mod/modules/ \;
+          cp kernel/out/drivers/bluetooth/btusb.ko magisk_mod/modules/ 2>/dev/null || true
+          cp kernel/out/drivers/bluetooth/btintel.ko magisk_mod/modules/ 2>/dev/null || true
+          cp kernel/out/drivers/bluetooth/btrtl.ko magisk_mod/modules/ 2>/dev/null || true
           cp kernel/out/drivers/misc/eeprom/eeprom_93cx6.ko magisk_mod/modules/ 2>/dev/null || true
           cp kernel/out/net/mac80211/mac80211.ko magisk_mod/modules/ 2>/dev/null || true
           $GITHUB_WORKSPACE/clang/bin/llvm-strip --strip-debug magisk_mod/modules/*.ko
