@@ -45,7 +45,6 @@ jobs:
           cat << 'EOF' >> out/.config
           CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
           CONFIG_LOCALVERSION_AUTO=n
-          CONFIG_LTO_NONE=y
           CONFIG_MAC80211=m
           CONFIG_MAC80211_MESH=y
           CONFIG_WLAN=y
