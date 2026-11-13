@@ -22,7 +22,7 @@ jobs:
       - name: Clone Exact Running Kernel Commit & Clang Toolchain
         run: |
           GH="https://github.com"
-          git clone -b lineage24.0 $GH/LineageOS/android_kernel_motorola_sm6375.git kernel
+          git clone -b lineage-24.0 $GH/LineageOS/android_kernel_motorola_sm6375.git kernel
           cd kernel && git checkout c63a2b5a1b97 && cd ..
           git clone --depth=1 $GH/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b.git clang
 
