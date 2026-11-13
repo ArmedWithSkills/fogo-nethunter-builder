@@ -36,7 +36,7 @@ jobs:
           fi
           rm -rf nh-patches
 
-      - name: Configure Wireless Vendor Drivers (Exact Stock CRCs)
+            - name: Configure Wireless Vendor Drivers (Exact Stock CRCs)
         working-directory: kernel
         run: |
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
@@ -47,6 +47,9 @@ jobs:
           cat << 'EOF' >> out/.config
           CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
           CONFIG_LOCALVERSION_AUTO=n
+          CONFIG_LTO_NONE=y
+          CONFIG_MAC80211=m
+          CONFIG_MAC80211_MESH=y
           CONFIG_WLAN=y
           CONFIG_WLAN_VENDOR_ATH=y
           CONFIG_ATH_COMMON=m
@@ -64,14 +67,8 @@ jobs:
           CONFIG_MT76x0U=m
           CONFIG_MT76x2U=m
           CONFIG_BT_HCIBTUSB=m
-          CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
-          CONFIG_LOCALVERSION_AUTO=n
-          CONFIG_LTO_NONE=y
-          CONFIG_MAC80211=m
-          CONFIG_MAC80211_MESH=y
-          CONFIG_WLAN=y
-          CONFIG_WLAN_VENDOR_ATH=y
           EOF
+
 
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
           grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76" out/.config
