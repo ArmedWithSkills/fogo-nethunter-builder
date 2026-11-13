@@ -36,7 +36,7 @@ jobs:
           fi
           rm -rf nh-patches
 
-            - name: Configure Wireless Vendor Drivers (Exact Stock CRCs)
+      - name: Configure Wireless Vendor Drivers (Exact Stock CRCs)
         working-directory: kernel
         run: |
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
