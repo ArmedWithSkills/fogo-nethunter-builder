@@ -1,4 +1,4 @@
-name: Build Fogo NetHunter Magisk Module (Single-Pass Full Build)
+name: Build Fogo NetHunter Magisk Module (Exact Stock CRCs)
 
 on:
   workflow_dispatch:
@@ -36,15 +36,25 @@ jobs:
           fi
           rm -rf nh-patches
 
-      - name: Configure Wireless & Bluetooth Drivers
+      - name: Stage 1 - Build Stock Symbol Table (vmlinux + cfg80211 CRCs)
         working-directory: kernel
         run: |
           export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
           make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 vendor/holi-qgki_defconfig vendor/ext_config/lineage_moto-holi.config
-
           cat << 'EOF' >> out/.config
           CONFIG_LOCALVERSION="-moto-gc63a2b5a1b97"
           CONFIG_LOCALVERSION_AUTO=n
+          EOF
+          make O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 olddefconfig
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error"
+          cp out/Module.symvers /tmp/stock_Module.symvers
+          wc -l /tmp/stock_Module.symvers
+
+      - name: Stage 2 - Build mac80211, Wi-Fi & Bluetooth Modules with Exact CRCs
+        working-directory: kernel
+        run: |
+          export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
+          cat << 'EOF' >> out/.config
           CONFIG_MAC80211=m
           CONFIG_MAC80211_MESH=y
           CONFIG_WLAN=y
@@ -72,19 +82,14 @@ jobs:
 
           : > net/mac80211/rc80211_minstrel_ht.c
           printf '\nint __init rc80211_minstrel_init(void) { return 0; }\nvoid rc80211_minstrel_exit(void) {}\n' >> net/mac80211/main.c
-          grep -E "ATH9K_HTC|RTL8187|RT2800USB|MT76|MAC80211|BT_HCIBTUSB|WEXT" out/.config
 
-      - name: Compile Full Kernel & Modules (Exact ThinLTO + Symvers)
-        working-directory: kernel
-        run: |
-          export PATH="$GITHUB_WORKSPACE/clang/bin:$PATH"
-          make -j$(nproc) O=out \
-            ARCH=arm64 \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            KCFLAGS="-Wno-error" \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" modules_prepare
+          cp /tmp/stock_Module.symvers out/Module.symvers
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error -Inet/mac80211" KBUILD_MODPOST_WARN=1 M=net/mac80211 modules
+          cat out/net/mac80211/Module.symvers >> out/Module.symvers
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/net/wireless modules
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/bluetooth modules
+          make -j$(nproc) O=out ARCH=arm64 LLVM=1 LLVM_IAS=1 KCFLAGS="-Wno-error" KBUILD_MODPOST_WARN=1 M=drivers/misc/eeprom modules
 
       - name: Package as Flashable Magisk Module Zip
         run: |
